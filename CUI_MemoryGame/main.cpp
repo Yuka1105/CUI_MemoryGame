@@ -11,7 +11,6 @@
 #include <string>
 #include <thread>
 #include <windows.h>
-#include "PoolAllocator.h"
 #define _USE_MATH_DEFINES
 using namespace std;
 
@@ -48,21 +47,19 @@ int main() {
 	// カードをめくった回数（1組で1回）
 	int card_open_count = 0;
 
-	// カードの数字
+	// カードの数字をランダム化
 	string num[] = { "１", "１", "２", "２", "３", "３", "４", "４", "５", "５", "６", "６", "７", "７", "８" , "８", "９", "９", "０", "０" };
 	// 乱数生成器を使用してシャッフル
 	random_device rd;
 	mt19937 gen(rd());
 	shuffle(begin(num), end(num), gen);
 
-	// メモリ確保
+	// カードを初期化
 	const int CARD_SIZE = 20;
-	PoolAllocator<Card, CARD_SIZE> a;
-	Card* ptr[CARD_SIZE];
+	Card card[CARD_SIZE];
 	for (int i = 0; i < CARD_SIZE; i++) {
-		ptr[i] = a.Alloc();
-		ptr[i]->card_num = num[i];
-		ptr[i]->is_remain = true;
+		card[i].card_num = num[i];
+		card[i].is_remain = true;
 	}
 
 	//ポイント部分、最初に裏返したカード、次に裏返したカードの座標位置
@@ -184,7 +181,7 @@ int main() {
 							if (column == 0) {
 								cout << "　";
 							}
-							if (ptr[i]->is_remain == true) {
+							if (card[i].is_remain == true) {
 								cout << "□" << "　";
 							}
 							else {
@@ -215,7 +212,7 @@ int main() {
 							if (column == 0) {
 								cout << "　";
 							}
-							cout << ptr[i]->card_num << "　";
+							cout << card[i].card_num << "　";
 						}
 						else if (column == pointer.x && row == pointer.y) {
 							if (column == 0) {
@@ -227,7 +224,7 @@ int main() {
 							if (column == 0) {
 								cout << "　";
 							}
-							if (ptr[i]->is_remain == true) {
+							if (card[i].is_remain == true) {
 								cout << "□" << "　";
 							}
 							else {
@@ -248,7 +245,7 @@ int main() {
 					// 2枚カードを開いたとき
 				case GameState::CARD2:
 					// 2枚のカードの数字が合った場合
-					if (ptr[fc.y * 5 + fc.x]->card_num == ptr[sc.y * 5 + sc.x]->card_num) {
+					if (card[fc.y * 5 + fc.x].card_num == card[sc.y * 5 + sc.x].card_num) {
 
 						// ランダムなメッセージを設定
 						// 乱数生成器を使用してシャッフル
@@ -257,8 +254,8 @@ int main() {
 						shuffle(begin(good_message), end(good_message), gen);
 						message = good_message[0];
 
-						ptr[fc.y * 5 + fc.x]->is_remain = false;
-						ptr[sc.y * 5 + sc.x]->is_remain = false;
+						card[fc.y * 5 + fc.x].is_remain = false;
+						card[sc.y * 5 + sc.x].is_remain = false;
 						// 場にあるカードの枚数を管理
 						remain_card_num -= 2;
 						for (int i = 0; i < CARD_SIZE; i++) {
@@ -284,7 +281,7 @@ int main() {
 								if (column == 0) {
 									cout << "　";
 								}
-								if (ptr[i]->is_remain == true) {
+								if (card[i].is_remain == true) {
 									cout << "□" << "　";
 								}
 								else {
@@ -328,19 +325,19 @@ int main() {
 								if (column == 0) {
 									cout << "　";
 								}
-								cout << ptr[i]->card_num << "　";
+								cout << card[i].card_num << "　";
 							}
 							else if (column == sc.x && row == sc.y) {
 								if (column == 0) {
 									cout << "　";
 								}
-								cout << ptr[i]->card_num << "　";
+								cout << card[i].card_num << "　";
 							}
 							else {
 								if (column == 0) {
 									cout << "　";
 								}
-								if (ptr[i]->is_remain == true) {
+								if (card[i].is_remain == true) {
 									cout << "□" << "　";
 								}
 								else {
@@ -413,7 +410,7 @@ int main() {
 				case 13:
 					switch (currentCardState) {
 					case GameState::CARD0:
-						if (ptr[pointer.y * 5 + pointer.x]->is_remain == true) {
+						if (card[pointer.y * 5 + pointer.x].is_remain == true) {
 							fc.x = pointer.x;
 							fc.y = pointer.y;
 							currentCardState = GameState::CARD1;
@@ -421,7 +418,7 @@ int main() {
 						break;
 
 					case GameState::CARD1:
-						if (ptr[pointer.y * 5 + pointer.x]->is_remain == true) {
+						if (card[pointer.y * 5 + pointer.x].is_remain == true) {
 							if (pointer.x != fc.x || pointer.y != fc.y) {
 								card_open_count += 1;
 								sc.x = pointer.x;
@@ -474,7 +471,7 @@ int main() {
 		// キー入力を待つ
 		k = _getch();
 		if (k == 13) {
-			currentTransState == GameState::EXIT;
+			currentTransState = GameState::EXIT;
 			break;
 		};
 
