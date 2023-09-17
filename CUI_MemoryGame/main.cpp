@@ -14,14 +14,16 @@
 #define _USE_MATH_DEFINES
 using namespace std;
 
-//タイトル、ゲーム本編、リザルト、開いたカードの枚数によりステートを変更
+// シーン
 enum class GameState { TITLE, GAME, RESULT, EXIT, CARD0, CARD1, CARD2 };
 
+// カードの状態
 struct Card {
 	string card_num;
 	bool is_remain;
 };
 
+// 位置
 struct Position {
 	int x;
 	int y;
@@ -36,48 +38,43 @@ int main() {
 	SetConsoleMode(hStdOut, mode | ENABLE_VIRTUAL_TERMINAL_PROCESSING);
 	// カーソルを消す
 	printf("\x1b[?25l");
-
-	// キー入力
-	int k;
-
-	// タイマー
-	time_t start_time;
+	
+	int k; // キー入力
+	time_t start_time; // タイマー
 	time_t end_time;
-
-	// カードをめくった回数（1組で1回）
-	int card_open_count = 0;
-
-	// カードの数字をランダム化
-	string num[] = { "１", "１", "２", "２", "３", "３", "４", "４", "５", "５", "６", "６", "７", "７", "８" , "８", "９", "９", "０", "０" };
-	// 乱数生成器を使用してシャッフル
-	random_device rd;
-	mt19937 gen(rd());
-	shuffle(begin(num), end(num), gen);
+	int card_open_count = 0; // カードをめくった回数（1組で1回）
 
 	// カードを初期化
 	const int CARD_SIZE = 20;
 	Card card[CARD_SIZE];
+	string num[] = { "１", "１", "２", "２", "３", "３", "４", "４", "５", "５", "６", "６", "７", "７", "８" , "８", "９", "９", "０", "０" };
+	random_device rd; // カードをシャッフル
+	mt19937 gen(rd());
+	shuffle(begin(num), end(num), gen);
 	for (int i = 0; i < CARD_SIZE; i++) {
 		card[i].card_num = num[i];
 		card[i].is_remain = true;
 	}
 
-	//ポイント部分、最初に裏返したカード、次に裏返したカードの座標位置
-	Position pointer = { 0, 0 };
-	Position fc = { 0, 0 };
-	Position sc = { 0, 0 };
-	// 場に残っているカードの枚数
-	int remain_card_num = 20;
+	//　位置
+	Position pointer = { 0, 0 }; // 手
+	Position fc = { 0, 0 }; // 1回目に裏返したカード
+	Position sc = { 0, 0 }; // 2回目に裏返したカード
+
+	int remain_card_num = 20; // 場に残っているカードの枚数
 
 	// 応援メッセージ
 	string message = "(^o^)丿これから私が応援するよ！";
-	// 数が合わなかったとき
+	// 正解
 	string bad_message[] = { "(´;ω;｀)ざんね～ん", "φ(..)記憶記憶！メモメモ！", "( *´艸｀)ありゃりゃ", "(∩´∀｀)∩ がんばれぇ～！", "(゜-゜)頑張ってる？" };
-	// 数が合ったとき
+	// 不正解
 	string good_message[] = { "(◎_◎;)や、やるじゃないの！", "その調子！ヽ(^o^)丿", "(ﾟдﾟ)！なんという記憶力！！", "(/・ω・)/おみごと！" };
-
+	
 	// 遊び方説明
 	string gameExplanation =
+		"\n\n"
+		"　　　　　　　　　　　　　 　(^O^) ひとり神経衰弱 (^O^)\n\n"
+		"　　　　　　　　　　　　　　エンターキーを押すと始まるよ！\n\n"
 		"　□－－－－－－－－－－－－－－－－－－－－－－－－－－－－－－－－－－－ーーーーー－□\n"
 		"　 ｜　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　 |\n"
 		"　 ｜【遊び方】　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　 |\n"
@@ -96,6 +93,12 @@ int main() {
 		"　 ｜　　とりあえず、はじめてみよう！　　　　　　　　   　　　  　　　　 　　　　 　　|\n"
 		"　 ｜　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　 |\n"
 		"　□ー－－－－－－－－－－－－－－－－－－－－－－－－－－－－－－－－－－ーー－－ーー□\n";
+	
+	// ゲームカウントテキスト
+	string gameCountText =
+		"\n\n\n　　　ゲームまで：";
+	
+	// ショート版遊び方説明
 	string gameExplanation_short =
 		"　□－－－－－－－－－－－－－－－－－－－－－－－－ー□\n"
 		"　 ｜　　　　　　　　　　　　　　　　　　　　　　　　 |\n"
@@ -105,31 +108,27 @@ int main() {
 		"　 ｜　　Enter：カードをめくる　　　　　　　　 　　　 |\n"
 		"　 ｜　　　　　　　　　　　　　　　　　　　　　　　　 |\n"
 		"　□ー－－－－－－－－－－－－－－－－－－－－－－ー－□\n";
+	
+	// クリア後のメッセージ
 	string clearMessage =
+		"\n\n\n"
 		"　　★－－－－－－－－－－－－－－－－－ーー★\n"
 		"　　　★　　　　　　　　　　　　　　　　　★\n"
 		"　　　｜　　ゲームクリア！！！　　　　　　|\n"
 		" 　　  ★　 お疲れ様！よく頑張りました！ ★\n"
 		" 　　 ｜　　つぎは、結果発表だよ！　　 　 |\n"
 		"　　　★　　　　　　　　　　　　　　　　　★\n"
-		"　　★ー－－－－－－－－－－－－－－－ーー－★\n";
+		"　　★ー－－－－－－－－－－－－－－－ーー－★\n"
+		"\n";
 
-	// 初期画面遷移ステート
-	GameState currentTransState = GameState::TITLE;
-	// 初期カードステート
-	GameState currentCardState = GameState::CARD0;
+	GameState currentTransState = GameState::TITLE; // 初期画面遷移ステート
+	GameState currentCardState = GameState::CARD0; // 初期カードステート
 
 	while (currentTransState != GameState::RESULT) {
-		// 画面をクリア
-		system("cls");
+		system("cls"); // 画面をクリア
 		switch (currentTransState) {
 		case GameState::TITLE:
-
-			cout << endl << endl;
-			cout << "　　　　　　　　　　　　　 　(^O^) ひとり神経衰弱 (^O^)" << endl << endl;
-			cout << "　　　　　　　　　　　　　　エンターキーを押すと始まるよ！" << endl << endl;
 			cout << gameExplanation;
-
 			do {
 				k = _getch();
 				if (k == 13) {
@@ -138,75 +137,60 @@ int main() {
 			} while (k != 13);
 			break;
 		case GameState::GAME:
-
 			// カウントダウン
 			for (int i = 3; i >= 1; i--) {
-				// 画面をクリア
-				system("cls");
-				cout << endl << endl << endl << "　　　ゲームまで：" << i << endl;
-			std:this_thread::sleep_for(std::chrono::seconds(1));
+				system("cls"); // 画面をクリア
+				cout << gameCountText << i << endl;
+				this_thread::sleep_for(chrono::seconds(1));
 			}
-
-			// ゲーム開始と同時にタイマーセット
+			// ゲーム開始と共にタイマーセット
 			start_time = time(nullptr);
-
-			//キー入力ごとに画面更新、カードの描画
+			// キー入力ごとに画面更新 & カード描画
 			do
 			{
-				// 画面をクリア
-				system("cls");
+				system("cls"); // 画面をクリア
 				cout << endl;
-
 				// 20枚のカードの座標位置を管理
 				int row = 0;
 				int column = 0;
-
 				switch (currentCardState) {
-					// 1枚もカードを開いてないとき
+				// 1枚もカードを開いてないとき
 				case GameState::CARD0:
 					for (int i = 0; i < CARD_SIZE; i++) {
 						if (i % 5 == 0 && i != 0) {
 							column = 0;
 							row += 1;
-							cout << endl;
-							cout << endl;
+							cout << "\n\n";
 						}
 						if (column == pointer.x && row == pointer.y) {
 							if (column == 0) {
 								cout << "　";
 							}
-							cout << "◆" << "　";
+							cout << "◆　";
 						}
 						else {
 							if (column == 0) {
 								cout << "　";
 							}
 							if (card[i].is_remain == true) {
-								cout << "□" << "　";
+								cout << "□　";
 							}
 							else {
-								cout << "　" << "　";
+								cout << "　　";
 							}
 						}
 						column += 1;
 					}
-
-					// メッセージ
-					cout << endl << endl << endl;
-					cout << "　" << message << endl << endl << endl;
-					// 遊び方説明
-					cout << gameExplanation_short;
-
+					cout << "\n\n\n　" << message << "\n\n\n"; // 顔文字メッセージ
+					cout << gameExplanation_short; // 遊び方説明
 					break;
-
-					// 1枚カードを開いたとき
+				// 1枚カードを開いたとき
 				case GameState::CARD1:
 					for (int i = 0; i < CARD_SIZE; i++) {
 						if (i % 5 == 0 && i != 0) {
 							column = 0;
 							row += 1;
-							cout << endl;
-							cout << endl;
+							cout << "\n\n";
 						}
 						if (column == fc.x && row == fc.y) {
 							if (column == 0) {
@@ -218,108 +202,86 @@ int main() {
 							if (column == 0) {
 								cout << "　";
 							}
-							cout << "◆" << "　";
+							cout << "◆　";
 						}
 						else {
 							if (column == 0) {
 								cout << "　";
 							}
 							if (card[i].is_remain == true) {
-								cout << "□" << "　";
+								cout << "□　";
 							}
 							else {
-								cout << "　" << "　";
+								cout << "　　";
 							}
 						}
 						column += 1;
 					}
-
-					// メッセージ
-					cout << endl << endl << endl;
-					cout << "　" << message << endl << endl << endl;
-					// 遊び方説明
-					cout << gameExplanation_short;
-
+					cout << "\n\n\n　" << message << "\n\n\n"; // 顔文字メッセージ
+					cout << gameExplanation_short; // 遊び方説明
 					break;
-
-					// 2枚カードを開いたとき
+				// 2枚カードを開いたとき
 				case GameState::CARD2:
-					// 2枚のカードの数字が合った場合
+					// 正解
 					if (card[fc.y * 5 + fc.x].card_num == card[sc.y * 5 + sc.x].card_num) {
-
 						// ランダムなメッセージを設定
-						// 乱数生成器を使用してシャッフル
 						random_device rd_good;
 						mt19937 gen(rd_good());
 						shuffle(begin(good_message), end(good_message), gen);
 						message = good_message[0];
-
 						card[fc.y * 5 + fc.x].is_remain = false;
 						card[sc.y * 5 + sc.x].is_remain = false;
-						// 場にあるカードの枚数を管理
-						remain_card_num -= 2;
+						remain_card_num -= 2; // 場にあるカードの枚数を管理
 						for (int i = 0; i < CARD_SIZE; i++) {
 							if (i % 5 == 0 && i != 0) {
 								column = 0;
 								row += 1;
-								cout << endl;
-								cout << endl;
+								cout << "\n\n";
 							}
 							if (column == fc.x && row == fc.y) {
 								if (column == 0) {
 									cout << "　";
 								}
-								cout << "　" << "　";
+								cout << "　　";
 							}
 							else if (column == sc.x && row == sc.y) {
 								if (column == 0) {
 									cout << "　";
 								}
-								cout << "　" << "　";
+								cout << "　　";
 							}
 							else {
 								if (column == 0) {
 									cout << "　";
 								}
 								if (card[i].is_remain == true) {
-									cout << "□" << "　";
+									cout << "□　";
 								}
 								else {
-									cout << "　" << "　";
+									cout << "　　";
 								}
 							}
 							column += 1;
 						}
-
-						// メッセージ
-						cout << endl << endl << endl;
-						cout << "　" << message << endl << endl << endl;
-						// 遊び方説明
-						cout << gameExplanation_short;
-
-						// 一定時間後にCARD0に遷移する
-						// std::this_thread::sleep_for(std::chrono::seconds(1)); // 1秒遅延
+						cout << "\n\n\n　" << message << "\n\n\n"; // 顔文字メッセージ
+						cout << gameExplanation_short; // 遊び方説明
 						fc = { 0, 0 };
 						sc = { 0, 0 };
 						currentCardState = GameState::CARD0;
 						continue;
 					}
-					// 2枚のカードの数字が合わなかった場合
+					// 不正解
 					else {
-
 						// ランダムなメッセージを設定
-						// 乱数生成器を使用してシャッフル
 						random_device rd_bad;
 						mt19937 gen(rd_bad());
 						shuffle(begin(bad_message), end(bad_message), gen);
 						message = bad_message[0];
-
 						for (int i = 0; i < CARD_SIZE; i++) {
 							if (i % 5 == 0 && i != 0) {
 								column = 0;
 								row += 1;
-								cout << endl;
-								cout << endl;
+								cout << "\n\n";
 							}
 							if (column == fc.x && row == fc.y) {
 								if (column == 0) {
@@ -338,23 +300,18 @@ int main() {
 									cout << "　";
 								}
 								if (card[i].is_remain == true) {
-									cout << "□" << "　";
+									cout << "□　";
 								}
 								else {
-									cout << "　" << "　";
+									cout << "　　";
 								}
 							}
 							column += 1;
 						}
-
-						// メッセージ
-						cout << endl << endl << endl;
-						cout << "　" << message << endl << endl << endl;
-						// 遊び方説明
-						cout << gameExplanation_short;
-
-						// 一定時間後にCARD0に遷移する
-						std::this_thread::sleep_for(std::chrono::seconds(1)); // 1秒遅延
+						cout << "\n\n\n　" << message << "\n\n\n"; // 顔文字メッセージ
+						cout << gameExplanation_short; // 遊び方説明
+						
+						this_thread::sleep_for(chrono::seconds(1)); // 1秒後CARD0に遷移
 						fc = { 0, 0 };
 						sc = { 0, 0 };
 						currentCardState = GameState::CARD0;
@@ -362,27 +319,14 @@ int main() {
 					}
 					break;
 				}
-
 				if (remain_card_num == 0) {
-					// ゲームクリアと同時にタイマーを止める
-					end_time = time(nullptr);
-
-					// 画面をクリア
-					system("cls");
-					// メッセージ
-					cout << endl << endl << endl;
-					cout << clearMessage << endl;
+					end_time = time(nullptr); // ゲームクリアと同時にタイマーを止める
+					system("cls"); // 画面をクリア
+					cout << clearMessage; // クリアメッセージ
 					currentTransState = GameState::RESULT;
-					// 一定時間後にRESULTに遷移する
-					std::this_thread::sleep_for(std::chrono::seconds(4)); // 4秒遅延
+					this_thread::sleep_for(chrono::seconds(4)); // 4秒後RESULTに遷移
 					break;
 				}
-
-				// バグチェック
-				//cout << endl;
-				//cout << fc.x << " " << fc.y << " " << sc.x << " " << sc.y << endl;
-				//cout << pointer.x << " " << pointer.y << endl;
-
 				// キー入力待ち
 				k = _getch();
 				// キー入力で座標更新orステート変更
@@ -430,13 +374,11 @@ int main() {
 					}
 					break;
 				}
-			} while ('q' != k); //  'q'キーで終了
+			} while ('q' != k); // 'q'キーで終了
 			break;
 		}
 	}
-
 	do {
-
 		// スコア計算
 		int score = static_cast<int>((1.0 / difftime(end_time, start_time) + 1.0 / card_open_count) * 1000);
 		string score_message;
@@ -456,25 +398,22 @@ int main() {
 			score_message = "Sランク！ なかなかこの域には達しないです。素晴らしい！おめでとうございます。( ^^) _旦~~";
 		}
 
-		// 画面をクリア
-		system("cls");
+		system("cls"); // 画面をクリア
 		// 結果発表
 		cout << endl;
-		cout << "　結果発表" << endl << endl;
-		cout << "　スコア: " << score << endl << endl;
-		cout << "　開発者からあなたへコメント: " << score_message << endl << endl;
-		cout << "　クリアにかかった時間: " << difftime(end_time, start_time) << " 秒" << endl << endl;
-		cout << "　カードを開いた回数: " << card_open_count << " 回" << endl << endl;
-		cout << "　遊んでくれてありがとうございました！" << endl << endl << endl;
+		cout << "\n　結果発表\n\n";
+		cout << "　スコア: " << score << "\n\n";
+		cout << "　開発者からあなたへコメント: " << score_message << "\n\n";
+		cout << "　クリアにかかった時間: " << difftime(end_time, start_time) << " 秒\n\n";
+		cout << "　カードを開いた回数: " << card_open_count << " 回\n\n";
+		cout << "　遊んでくれてありがとうございました！\n\n\n";
 		cout << "　※ エンターキーを押すとゲームが終了します。" << endl;
-
-		// キー入力を待つ
+		// キー入力待ち
 		k = _getch();
 		if (k == 13) {
 			currentTransState = GameState::EXIT;
 			break;
 		};
-
 	} while (currentTransState == GameState::RESULT);
 
 	// カーソルを表示

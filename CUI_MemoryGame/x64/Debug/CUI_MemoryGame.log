@@ -1,3 +1,2 @@
 ﻿  main.cpp
-C:\Users\komeda\Documents\CUI_MemoryGame\CUI_MemoryGame\main.cpp(147,4): warning C4102: 'std': ラベルは 1 度も参照されません。
   CUI_MemoryGame.vcxproj -> C:\Users\komeda\Documents\CUI_MemoryGame\x64\Debug\CUI_MemoryGame.exe
