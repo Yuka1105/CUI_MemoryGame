@@ -1,6 +1,6 @@
 # ひとり神経衰弱
 ## 詳しくはこちらのリンクへ
-デモ動画：準備中<br>
+デモ動画：https://youtu.be/LH7E6ocZvbo?si=DBAGdSmLFbsgbbYV<br>
 ポートフォリオ：準備中
 
 ## ゲーム内容
